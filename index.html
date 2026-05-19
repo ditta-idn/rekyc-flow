@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>reKYC Flow — Merchant + Internal + Compliance</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    margin: 0;
+    background: #f5f7fb;
+    color: #1c2433;
+  }
+  header {
+    background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+    color: #fff;
+    padding: 28px 40px;
+  }
+  header h1 { margin: 0; font-size: 26px; font-weight: 700; }
+  header p { margin: 6px 0 0; opacity: 0.85; font-size: 14px; }
+
+  nav.tabs {
+    display: flex;
+    gap: 4px;
+    padding: 0 40px;
+    background: #fff;
+    border-bottom: 1px solid #e3e7ef;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  nav.tabs button {
+    background: none;
+    border: none;
+    padding: 16px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #6b7280;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s;
+  }
+  nav.tabs button:hover { color: #1e3a8a; }
+  nav.tabs button.active {
+    color: #1e3a8a;
+    border-bottom-color: #3b82f6;
+  }
+
+  main { padding: 30px 40px 60px; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  h2 {
+    font-size: 20px;
+    margin: 0 0 6px;
+    color: #1e3a8a;
+  }
+  .subtitle { color: #6b7280; font-size: 13px; margin: 0 0 24px; }
+
+  /* Legend */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-bottom: 24px;
+    padding: 12px 16px;
+    background: #fff;
+    border-radius: 8px;
+    border: 1px solid #e3e7ef;
+    font-size: 12px;
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-dot {
+    width: 14px; height: 14px; border-radius: 3px;
+  }
+
+  /* Swimlane */
+  .swimlane {
+    background: #fff;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid #e3e7ef;
+    margin-bottom: 24px;
+  }
+  .lane {
+    display: grid;
+    grid-template-columns: 160px 1fr;
+    border-bottom: 1px solid #eef1f6;
+  }
+  .lane:last-child { border-bottom: none; }
+  .lane-label {
+    padding: 24px 16px;
+    font-weight: 700;
+    font-size: 13px;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    text-align: center;
+    justify-content: center;
+  }
+  .lane-label.merchant { background: #3b82f6; }
+  .lane-label.system   { background: #f59e0b; }
+  .lane-label.mo       { background: #10b981; }
+  .lane-label.compliance { background: #8b5cf6; }
+  .lane-label.outcome  { background: #475569; }
+
+  .lane-content {
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    overflow-x: auto;
+  }
+
+  .node {
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    text-align: center;
+    min-width: 110px;
+    max-width: 160px;
+    border: 2px solid;
+    background: #fff;
+  }
+  .node.merchant { border-color: #3b82f6; color: #1e3a8a; background: #eff6ff; }
+  .node.system   { border-color: #f59e0b; color: #92400e; background: #fffbeb; }
+  .node.mo       { border-color: #10b981; color: #065f46; background: #ecfdf5; }
+  .node.compliance { border-color: #8b5cf6; color: #5b21b6; background: #f5f3ff; }
+  .node.ok       { border-color: #10b981; color: #065f46; background: #d1fae5; }
+  .node.warn     { border-color: #f59e0b; color: #92400e; background: #fef3c7; }
+  .node.bad      { border-color: #ef4444; color: #991b1b; background: #fee2e2; }
+  .node.decision { border-radius: 50%; min-width: 80px; max-width: 80px; min-height: 80px; display: flex; align-items: center; justify-content: center; padding: 6px; border-color: #6b7280; background: #f9fafb; color: #1c2433; }
+
+  .arrow {
+    color: #9ca3af;
+    font-size: 18px;
+    font-weight: bold;
+    flex-shrink: 0;
+  }
+  .arrow-label {
+    font-size: 10px;
+    color: #6b7280;
+    text-align: center;
+    align-self: center;
+  }
+
+  /* Timeline */
+  .timeline-wrap {
+    background: #fff;
+    border-radius: 10px;
+    border: 1px solid #e3e7ef;
+    padding: 24px;
+    margin-bottom: 24px;
+  }
+  .timeline {
+    position: relative;
+    padding: 60px 20px 80px;
+    overflow-x: auto;
+  }
+  .timeline-bar {
+    height: 6px;
+    background: linear-gradient(90deg, #10b981 0%, #f59e0b 33%, #f97316 66%, #ef4444 100%);
+    border-radius: 3px;
+    position: relative;
+    min-width: 900px;
+  }
+  .tick {
+    position: absolute;
+    top: -8px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #fff;
+    border: 3px solid #6b7280;
+    transform: translateX(-50%);
+  }
+  .tick.major { border-color: #1e3a8a; background: #1e3a8a; width: 22px; height: 22px; top: -9px; }
+  .tick.suspect  { border-color: #f59e0b; background: #f59e0b; }
+  .tick.suspend  { border-color: #f97316; background: #f97316; }
+  .tick.terminate { border-color: #ef4444; background: #ef4444; }
+
+  .tick-label {
+    position: absolute;
+    top: -54px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+    text-align: center;
+    color: #1c2433;
+  }
+  .tick-label small {
+    display: block;
+    font-weight: 500;
+    color: #6b7280;
+    font-size: 9px;
+    margin-top: 2px;
+  }
+  .tick-desc {
+    position: absolute;
+    top: 26px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 10px;
+    color: #6b7280;
+    white-space: nowrap;
+    max-width: 100px;
+    text-align: center;
+  }
+
+  /* Matrix table */
+  table.matrix {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid #e3e7ef;
+    margin-bottom: 24px;
+    font-size: 13px;
+  }
+  table.matrix th {
+    background: #1e3a8a;
+    color: #fff;
+    padding: 12px 14px;
+    text-align: left;
+    font-weight: 600;
+  }
+  table.matrix td {
+    padding: 12px 14px;
+    border-top: 1px solid #eef1f6;
+  }
+  table.matrix tr:nth-child(even) td { background: #f9fafb; }
+  .pill {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .pill.reminder { background: #fef3c7; color: #92400e; }
+  .pill.suspect  { background: #fed7aa; color: #9a3412; }
+  .pill.suspend  { background: #fecaca; color: #991b1b; }
+  .pill.terminate { background: #1c2433; color: #fff; }
+  .pill.notify   { background: #dbeafe; color: #1e40af; }
+
+  .section-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #1c2433;
+    margin: 28px 0 12px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid #e3e7ef;
+  }
+
+  /* Decision branches */
+  .branch-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+    margin-top: 20px;
+  }
+  .branch {
+    background: #fff;
+    border-radius: 10px;
+    border: 1px solid #e3e7ef;
+    padding: 18px;
+  }
+  .branch h4 {
+    margin: 0 0 12px;
+    font-size: 14px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid;
+  }
+  .branch.ok h4 { color: #065f46; border-color: #10b981; }
+  .branch.resub h4 { color: #92400e; border-color: #f59e0b; }
+  .branch.esc h4 { color: #5b21b6; border-color: #8b5cf6; }
+  .branch ul { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.7; color: #374151; }
+
+  .callout {
+    background: #fffbeb;
+    border-left: 4px solid #f59e0b;
+    padding: 12px 16px;
+    border-radius: 4px;
+    margin: 16px 0;
+    font-size: 13px;
+    color: #78350f;
+  }
+
+  /* Vertical flow for sub-flows */
+  .vflow {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 20px;
+    background: #fff;
+    border-radius: 10px;
+    border: 1px solid #e3e7ef;
+  }
+  .vflow .node { min-width: 220px; max-width: 280px; padding: 14px; font-size: 13px; }
+  .vflow .vdown { color: #9ca3af; font-size: 22px; font-weight: bold; }
+  .vflow-row {
+    display: flex;
+    gap: 30px;
+    align-items: flex-start;
+    justify-content: center;
+  }
+  .vflow-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  .branch-label {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 4px;
+    background: #f3f4f6;
+    color: #374151;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>reKYC Flow — Merchant, Internal Ops & Compliance</h1>
+  <p>End-to-end process showing merchant journey, MO review, escalation, enforcement timeline, and notification matrix</p>
+</header>
+
+<nav class="tabs">
+  <button class="tab-btn active" data-tab="combined">1. Combined Flow</button>
+  <button class="tab-btn" data-tab="merchant">2. Merchant POV</button>
+  <button class="tab-btn" data-tab="internal">3. Internal POV (MO + Compliance)</button>
+  <button class="tab-btn" data-tab="timeline">4. Timeline & Notification Matrix</button>
+</nav>
+
+<main>
+
+<!-- ====================== TAB 1: COMBINED ====================== -->
+<section class="panel active" id="combined">
+  <h2>Combined Swim-Lane Flow</h2>
+  <p class="subtitle">High-level view of the full reKYC lifecycle across all actors. Each row = one actor lane.</p>
+
+  <div class="legend">
+    <div class="legend-item"><span class="legend-dot" style="background:#3b82f6"></span>Merchant</div>
+    <div class="legend-item"><span class="legend-dot" style="background:#f59e0b"></span>System / Notifications</div>
+    <div class="legend-item"><span class="legend-dot" style="background:#10b981"></span>Merchant Ops (MO)</div>
+    <div class="legend-item"><span class="legend-dot" style="background:#8b5cf6"></span>Compliance</div>
+    <div class="legend-item"><span class="legend-dot" style="background:#475569"></span>Outcome</div>
+  </div>
+
+  <div class="swimlane">
+
+    <div class="lane">
+      <div class="lane-label system">SYSTEM<br>NOTIFICATIONS</div>
+      <div class="lane-content">
+        <div class="node system">D0<br>Trigger reKYC<br>(Email + Dashboard)</div>
+        <span class="arrow">→</span>
+        <div class="node system">D15 / D22 / D29<br>Reminders</div>
+        <span class="arrow">→</span>
+        <div class="node system">D30<br>Suspect notice</div>
+        <span class="arrow">→</span>
+        <div class="node system">D45 / D52 / D59<br>Reminders</div>
+        <span class="arrow">→</span>
+        <div class="node system">D60<br>Suspend notice</div>
+        <span class="arrow">→</span>
+        <div class="node system">D75 / D82 / D89<br>Reminders</div>
+        <span class="arrow">→</span>
+        <div class="node system">D90<br>Terminate notice</div>
+      </div>
+    </div>
+
+    <div class="lane">
+      <div class="lane-label merchant">MERCHANT</div>
+      <div class="lane-content">
+        <div class="node merchant">Receive notification<br>(Email + Dashboard)</div>
+        <span class="arrow">→</span>
+        <div class="node merchant">Log in &amp; access reKYC page</div>
+        <span class="arrow">→</span>
+        <div class="node merchant">Upload required documents</div>
+        <span class="arrow">→</span>
+        <div class="node merchant">Submit for review</div>
+        <span class="arrow">→</span>
+        <div class="node decision">Result?</div>
+      </div>
+    </div>
+
+    <div class="lane">
+      <div class="lane-label mo">MERCHANT<br>OPS (MO)</div>
+      <div class="lane-content">
+        <div class="node mo">Receive submission in queue</div>
+        <span class="arrow">→</span>
+        <div class="node mo">Verify documents &amp; data</div>
+        <span class="arrow">→</span>
+        <div class="node decision">MO<br>Decision</div>
+        <span class="arrow-label">Approve / Resubmit / Escalate</span>
+        <span class="arrow">→</span>
+        <div class="node mo">Notify merchant of outcome</div>
+      </div>
+    </div>
+
+    <div class="lane">
+      <div class="lane-label compliance">COMPLIANCE</div>
+      <div class="lane-content">
+        <div class="node compliance">Receive escalation from MO</div>
+        <span class="arrow">→</span>
+        <div class="node compliance">Deep review (risk, sanctions, AML)</div>
+        <span class="arrow">→</span>
+        <div class="node decision">Compliance<br>Decision</div>
+        <span class="arrow-label">Approve / Terminate</span>
+        <span class="arrow">→</span>
+        <div class="node compliance">Final disposition logged</div>
+      </div>
+    </div>
+
+    <div class="lane">
+      <div class="lane-label outcome">OUTCOME</div>
+      <div class="lane-content">
+        <div class="node ok">Completed<br>No action required</div>
+        <span class="arrow">/</span>
+        <div class="node warn">Resubmission required<br>(back to merchant)</div>
+        <span class="arrow">/</span>
+        <div class="node compliance">Escalated<br>(to Compliance)</div>
+        <span class="arrow">/</span>
+        <div class="node bad">Terminated<br>(relationship ended)</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="callout">
+    <strong>How to read this flow:</strong> System notifications run on a fixed cadence (top lane) regardless of merchant behaviour. Merchant actions feed into the MO queue; MO either resolves the case or escalates to Compliance. The final outcome row shows the four possible end-states.
+  </div>
+</section>
+
+<!-- ====================== TAB 2: MERCHANT POV ====================== -->
+<section class="panel" id="merchant">
+  <h2>Merchant POV — Detailed Sub-Flow</h2>
+  <p class="subtitle">What the merchant experiences from notification to final result.</p>
+
+  <div class="vflow">
+    <div class="node system">📧 D0 — Receive reKYC notification<br><small style="font-weight:400">Email + Dashboard banner</small></div>
+    <span class="vdown">↓</span>
+    <div class="node merchant">Log in to merchant dashboard</div>
+    <span class="vdown">↓</span>
+    <div class="node merchant">Navigate to reKYC section</div>
+    <span class="vdown">↓</span>
+    <div class="node merchant">Review required document checklist</div>
+    <span class="vdown">↓</span>
+    <div class="node merchant">Upload documents (KYC docs, business info, beneficial owners, etc.)</div>
+    <span class="vdown">↓</span>
+    <div class="node merchant">Submit for review</div>
+    <span class="vdown">↓</span>
+    <div class="node system">⏳ Awaiting MO review</div>
+    <span class="vdown">↓</span>
+    <div class="node decision">Outcome?</div>
+
+    <div class="vflow-row" style="margin-top:12px">
+
+      <div class="vflow-col">
+        <span class="branch-label" style="background:#d1fae5;color:#065f46">APPROVED</span>
+        <span class="vdown">↓</span>
+        <div class="node ok">✅ Completed<br><small style="font-weight:400">No further action needed</small></div>
+        <div class="node merchant">Continue normal account operations</div>
+      </div>
+
+      <div class="vflow-col">
+        <span class="branch-label" style="background:#fef3c7;color:#92400e">RESUBMISSION</span>
+        <span class="vdown">↓</span>
+        <div class="node warn">⚠️ Need resubmission<br><small style="font-weight:400">Notified via email + dashboard</small></div>
+        <span class="vdown">↓</span>
+        <div class="node merchant">Review MO feedback / missing items</div>
+        <span class="vdown">↓</span>
+        <div class="node merchant">Re-upload corrected documents</div>
+        <span class="vdown">↓</span>
+        <div class="node merchant">Resubmit → back to MO queue</div>
+      </div>
+
+      <div class="vflow-col">
+        <span class="branch-label" style="background:#f5f3ff;color:#5b21b6">ESCALATED</span>
+        <span class="vdown">↓</span>
+        <div class="node compliance">🔎 Compliance review in progress<br><small style="font-weight:400">Merchant informed of extended review</small></div>
+        <span class="vdown">↓</span>
+        <div class="node decision">Compliance<br>Result?</div>
+        <div class="vflow-row" style="gap:16px;margin-top:8px">
+          <div class="vflow-col">
+            <div class="node ok" style="min-width:140px">✅ Approved<br><small style="font-weight:400">Account active</small></div>
+          </div>
+          <div class="vflow-col">
+            <div class="node bad" style="min-width:140px">❌ Terminated<br><small style="font-weight:400">Relationship ends</small></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="callout">
+    <strong>Merchant-side enforcement triggers</strong> happen if the merchant does <em>not</em> submit, or submits incompletely. See the Timeline tab for the full reminder + enforcement cadence (D15, D22, D29 reminders → D30 suspect → D45/52/59 reminders → D60 suspend → D75/82/89 reminders → D90 terminate).
+  </div>
+</section>
+
+<!-- ====================== TAB 3: INTERNAL POV ====================== -->
+<section class="panel" id="internal">
+  <h2>Internal POV — MO Review &amp; Compliance Escalation</h2>
+  <p class="subtitle">What happens inside the operations team after the merchant submits.</p>
+
+  <div class="vflow">
+    <div class="node merchant">Merchant submits reKYC documents</div>
+    <span class="vdown">↓</span>
+    <div class="node mo">Submission lands in MO review queue</div>
+    <span class="vdown">↓</span>
+    <div class="node mo">MO agent picks up case &amp; checks SLA</div>
+    <span class="vdown">↓</span>
+    <div class="node mo">Verify: identity, business legitimacy, beneficial owners, completeness</div>
+    <span class="vdown">↓</span>
+    <div class="node decision">MO Decision</div>
+  </div>
+
+  <h3 class="section-title">MO Decision branches</h3>
+  <div class="branch-grid">
+
+    <div class="branch ok">
+      <h4>✅ Approve — Completed (no action)</h4>
+      <ul>
+        <li>All documents valid &amp; complete</li>
+        <li>No red flags detected</li>
+        <li>System marks reKYC as <strong>completed</strong></li>
+        <li>Merchant notified via email + dashboard</li>
+        <li>Account continues normally — no further action required</li>
+      </ul>
+    </div>
+
+    <div class="branch resub">
+      <h4>⚠️ Need Resubmission</h4>
+      <ul>
+        <li>Documents incomplete or unclear</li>
+        <li>Information mismatch (e.g., business name, address)</li>
+        <li>MO writes specific feedback on what to fix</li>
+        <li>Merchant notified — clock continues (counts as partial response)</li>
+        <li>Goes back to merchant POV flow → resubmit loop</li>
+      </ul>
+    </div>
+
+    <div class="branch esc">
+      <h4>🔎 Escalate to Compliance</h4>
+      <ul>
+        <li>High-risk indicators (industry, geography, ownership structure)</li>
+        <li>Possible sanctions / PEP / adverse media hit</li>
+        <li>Beyond MO's authority threshold</li>
+        <li>Case routed to Compliance queue with MO notes</li>
+        <li>Merchant informed of extended review</li>
+      </ul>
+    </div>
+
+  </div>
+
+  <h3 class="section-title">Compliance review sub-flow</h3>
+  <div class="vflow">
+    <div class="node compliance">Compliance receives escalation</div>
+    <span class="vdown">↓</span>
+    <div class="node compliance">Deep review: AML, sanctions, source of funds, risk score</div>
+    <span class="vdown">↓</span>
+    <div class="node compliance">May request additional evidence (via MO → merchant)</div>
+    <span class="vdown">↓</span>
+    <div class="node decision">Compliance<br>Decision</div>
+
+    <div class="vflow-row" style="margin-top:12px">
+      <div class="vflow-col">
+        <span class="branch-label" style="background:#d1fae5;color:#065f46">APPROVED</span>
+        <span class="vdown">↓</span>
+        <div class="node ok">✅ Completed — no action<br><small style="font-weight:400">Risk accepted, account remains active, monitoring continues</small></div>
+      </div>
+      <div class="vflow-col">
+        <span class="branch-label" style="background:#fee2e2;color:#991b1b">TERMINATED</span>
+        <span class="vdown">↓</span>
+        <div class="node bad">❌ Relationship terminated<br><small style="font-weight:400">Account closed, funds settlement per policy, merchant informed with rationale</small></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout">
+    <strong>RACI quick view:</strong> MO is <em>Responsible</em> for initial review &amp; merchant comms. Compliance is <em>Accountable</em> for escalated cases. CLM team is <em>Informed</em> on terminations for win-back / off-boarding journeys.
+  </div>
+</section>
+
+<!-- ====================== TAB 4: TIMELINE ====================== -->
+<section class="panel" id="timeline">
+  <h2>Enforcement Timeline &amp; Notification Matrix</h2>
+  <p class="subtitle">When notifications fire and when enforcement actions trigger if the merchant doesn't respond.</p>
+
+  <h3 class="section-title">Standard Timeline — No Response from Merchant</h3>
+  <div class="timeline-wrap">
+    <div class="timeline">
+      <div class="timeline-bar">
+        <!-- D0 -->
+        <div class="tick major" style="left:0%">
+          <div class="tick-label">D0<br><small>Trigger</small></div>
+          <div class="tick-desc">reKYC notice sent</div>
+        </div>
+        <!-- D15 -->
+        <div class="tick" style="left:16.67%">
+          <div class="tick-label">D15<br><small>Reminder</small></div>
+        </div>
+        <!-- D22 -->
+        <div class="tick" style="left:24.44%">
+          <div class="tick-label">D22<br><small>Reminder</small></div>
+        </div>
+        <!-- D29 -->
+        <div class="tick" style="left:32.22%">
+          <div class="tick-label">D29<br><small>Reminder</small></div>
+        </div>
+        <!-- D30 -->
+        <div class="tick suspect" style="left:33.33%">
+          <div class="tick-label" style="top:-66px">D30<br><small style="color:#92400e">SUSPECT</small></div>
+          <div class="tick-desc">Account suspected</div>
+        </div>
+        <!-- D45 -->
+        <div class="tick" style="left:50%">
+          <div class="tick-label">D45<br><small>Reminder</small></div>
+        </div>
+        <!-- D52 -->
+        <div class="tick" style="left:57.78%">
+          <div class="tick-label">D52<br><small>Reminder</small></div>
+        </div>
+        <!-- D59 -->
+        <div class="tick" style="left:65.56%">
+          <div class="tick-label">D59<br><small>Reminder</small></div>
+        </div>
+        <!-- D60 -->
+        <div class="tick suspend" style="left:66.67%">
+          <div class="tick-label" style="top:-66px">D60<br><small style="color:#9a3412">SUSPEND</small></div>
+          <div class="tick-desc">Account suspended</div>
+        </div>
+        <!-- D75 -->
+        <div class="tick" style="left:83.33%">
+          <div class="tick-label">D75<br><small>Reminder</small></div>
+        </div>
+        <!-- D82 -->
+        <div class="tick" style="left:91.11%">
+          <div class="tick-label">D82<br><small>Reminder</small></div>
+        </div>
+        <!-- D89 -->
+        <div class="tick" style="left:98.89%">
+          <div class="tick-label">D89<br><small>Reminder</small></div>
+        </div>
+        <!-- D90 -->
+        <div class="tick terminate" style="left:100%">
+          <div class="tick-label" style="top:-66px">D90<br><small style="color:#991b1b">TERMINATE</small></div>
+          <div class="tick-desc">Relationship ended</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <table class="matrix">
+    <thead>
+      <tr>
+        <th style="width:90px">Day</th>
+        <th style="width:130px">Type</th>
+        <th>Action / Notification</th>
+        <th style="width:180px">Channel</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>D0</strong></td><td><span class="pill notify">Notification</span></td><td>Initial reKYC request — merchant asked to submit documents</td><td>Email + Dashboard</td></tr>
+      <tr><td><strong>D15</strong></td><td><span class="pill reminder">Reminder</span></td><td>1st reminder before account is suspected</td><td>Email + Dashboard</td></tr>
+      <tr><td><strong>D22</strong></td><td><span class="pill reminder">Reminder</span></td><td>2nd reminder before account is suspected</td><td>Email + Dashboard</td></tr>
+      <tr><td><strong>D29</strong></td><td><span class="pill reminder">Reminder</span></td><td>Final reminder before account is suspected</td><td>Email + Dashboard</td></tr>
+      <tr><td><strong>D30</strong></td><td><span class="pill suspect">Suspect</span></td><td>Account marked as <strong>suspected</strong> — merchant notified, withdrawal/risk flags applied per policy</td><td>Email + Dashboard</td></tr>
+      <tr><td><strong>D45</strong></td><td><span class="pill reminder">Reminder</span></td><td>1st reminder before suspension</td><td>Email + Dashboard</td></tr>
+      <tr><td><strong>D52</strong></td><td><span class="pill reminder">Reminder</span></td><td>2nd reminder before suspension</td><td>Email + Dashboard</td></tr>
+      <tr><td><strong>D59</strong></td><td><span class="pill reminder">Reminder</span></td><td>Final reminder before suspension</td><td>Email + Dashboard</td></tr>
+      <tr><td><strong>D60</strong></td><td><span class="pill suspend">Suspend</span></td><td>Account <strong>suspended</strong> — no transactions allowed</td><td>Email + Dashboard</td></tr>
+      <tr><td><strong>D75</strong></td><td><span class="pill reminder">Reminder</span></td><td>1st reminder before termination</td><td>Email + Dashboard</td></tr>
+      <tr><td><strong>D82</strong></td><td><span class="pill reminder">Reminder</span></td><td>2nd reminder before termination</td><td>Email + Dashboard</td></tr>
+      <tr><td><strong>D89</strong></td><td><span class="pill reminder">Reminder</span></td><td>Final reminder before termination</td><td>Email + Dashboard</td></tr>
+      <tr><td><strong>D90</strong></td><td><span class="pill terminate">Terminate</span></td><td>Relationship <strong>terminated</strong> — account closed per off-boarding policy</td><td>Email + Dashboard</td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="section-title">Partial Response Timeline — Incomplete Submission</h3>
+  <p class="subtitle">If merchant submits something but it's incomplete, enforcement is extended.</p>
+
+  <table class="matrix">
+    <thead>
+      <tr>
+        <th style="width:90px">Day</th>
+        <th style="width:160px">Condition</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>D60</strong></td><td>Incomplete submission</td><td><span class="pill suspect">Suspect</span> — account flagged, merchant asked to complete</td></tr>
+      <tr><td><strong>D90</strong></td><td>Still incomplete</td><td><span class="pill suspend">Suspend</span> — transactions blocked</td></tr>
+      <tr><td><strong>D120</strong></td><td>Still incomplete</td><td><span class="pill terminate">Terminate</span> — relationship ends</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <strong>Key rule:</strong> Reminder cadence inside each 30-day window is <em>Day-15, Day-22, Day-29</em> before each enforcement milestone (suspect / suspend / terminate). This gives merchants 3 nudges per window before any state change.
+  </div>
+</section>
+
+</main>
+
+<script>
+  const tabs = document.querySelectorAll('.tab-btn');
+  const panels = document.querySelectorAll('.panel');
+  tabs.forEach(btn => {
+    btn.addEventListener('click', () => {
+      tabs.forEach(b => b.classList.remove('active'));
+      panels.forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById(btn.dataset.tab).classList.add('active');
+      window.scrollTo({top: 0, behavior: 'smooth'});
+    });
+  });
+</script>
+
+</body>
+</html>
